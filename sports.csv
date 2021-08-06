@@ -1,0 +1,11 @@
+Wind,Temperature,Weather,Humidity,Outcome
+High,Moderate,Sunny,High,Play
+Medium,Moderate,Cloudy,Normal,Play
+Low,Moderate,Rainy,High,Cancel
+Medium,Cold,Rainy,Normal,Cancel
+Medium,Hot,Sunny,High,Play
+Low,Hot,Sunny,High,Play
+Medium,Moderate,Sunny,High,Play
+High,Moderate,Rainy,High,Cancel
+Medium,Moderate,Cloudy,High,Play
+High,Hot,Cloudy,High,Cancel
