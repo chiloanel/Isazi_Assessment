@@ -3,7 +3,7 @@ import csv
 import json
 
 def readData(file_name):
-	""" Function that reads the dataset from a csv file
+	""" Function that reads the dataset from a csv file (assumes the file is available)
 		Format: each row is a complete dataset,
 		the first row is the header, and
 		the last column is the decision.
@@ -66,13 +66,13 @@ def sliceDataset(dataset, category_col):
 			if category in data_row:
 				slice_data[category_idx].append(data_row)
 
-	return slice_data
+	return slice_data, category_count
 
 class UncertaintyCalculation():
 	""" UncertaintyCalculation determines the gain in order to
 		select the best question to splice the dataset.
 
-		Calcultes the gini impurity for each row and
+		Calculates the gini impurity for each row and
 		information gain of the split dataset
 	"""
 	def __init__(self):
@@ -88,7 +88,7 @@ class UncertaintyCalculation():
 		outcome_count = classCount(dataset, -1)
 
 		gini_impurity = self.impurity_init
-		for (outcome_name, total_appearance) in outcome_count.items():
+		for total_appearance in list(outcome_count.values()):
 			outcome_prob = float(total_appearance/float(len(dataset)))
 			gini_impurity -= outcome_prob**self.power
 
@@ -122,7 +122,7 @@ class Leaf:
         # the leaf category option is not influenced by other options
         common_option = leaf_data[0][question_asked.column_num]
         self.option_decision = common_option, decision_outcome
-        print("Leaf:", leaf_data)
+        # print("Leaf:", leaf_data)
 
 
 class DecisionNode:
@@ -133,6 +133,7 @@ class DecisionNode:
         self.split_question = split_question_
         self.split_dataset = split_dataset_
         self.split_option = split_option_
+        # print("Node: ", split_question_)
 
 def optimalSlice(dataset):
 	"""	Finds the best question to ask.
@@ -148,7 +149,7 @@ def optimalSlice(dataset):
 
 		# Store the column header/the question and plit the dataset
 		split_question = SplitDatasetQuestion(category_col) 
-		split_dataset = sliceDataset(dataset, category_col)
+		split_dataset, temp = sliceDataset(dataset, category_col)
 
 		# Continue to the next question (column) after an unsuccessful split
 		if not split_dataset[0]:
@@ -162,7 +163,7 @@ def optimalSlice(dataset):
 	return best_infor_gain, best_question
 
 
-def buildOptimalTree(dataset, question_node = None, count=0):
+def buildOptimalTree(dataset, question_node = None, split_option_=0):
 	""" Builds the optimal tree
 
 		Using the best question to ask at each node, it splits the dataset with it, and
@@ -170,33 +171,25 @@ def buildOptimalTree(dataset, question_node = None, count=0):
 
 		Returns a Question Node with question used to split, the node name, and the child nodes.
 
-		*** Danger: Giant stack traces
+		*** NB: Giant stack traces for large datasets
 	"""
 
 	infor_gain, split_question = optimalSlice(dataset)
 
 	if infor_gain == 0:
 		return Leaf(dataset, question_node)
+	else:
+		split_option = split_option_
+		# print("Question -", split_question)
+	
+	split_dataset, split_order = sliceDataset(dataset, split_question.column_num)
 
-	print("Question -", split_question)
-	split_dataset = sliceDataset(dataset, split_question.column_num)
-
-	for dt in split_dataset:
-		count += count
-		print(dt, "\n")
-		print(len(split_dataset),":", len(dt))
-
-	if count == 900:
-		return
-
-	# Recursively build each split branch and keep track of the common option in the node branch
 	split_data_branch = [[] for i in range(len(split_dataset))]
 	for split_data_idx in range(len(split_dataset)):
-		split_option = split_dataset[split_data_idx][0][split_question.column_num]
-		count += 1
-		print("count:", count)
-		split_data_branch[split_data_idx] = buildOptimalTree(split_dataset[split_data_idx], split_question, count) 
-		
+		split_opt = list(split_order.keys())[split_data_idx]
+		split_data_branch[split_data_idx] = buildOptimalTree(split_dataset[split_data_idx], split_question, split_opt)
+
+
 	return DecisionNode(split_question, split_data_branch, split_option)
 
 
@@ -211,34 +204,37 @@ def classCount(dataset, class_col):
 
 		return class_count
 
-def printTree(node, jd,  key="", spacing = ""):
+def printTree(node, jd = {}):
     """Tree printing function """
 
-    # Reached the leaf: display the option and the decision then return for that branch
-    if isinstance(node, Leaf):
-    	print(spacing + node.option_decision[0] + ": " + node.option_decision[1])
-    	jd[str(node.option_decision[0])] = node.option_decision[1]
-    	return
-
-    # recursively print every branch
     for nd in node.split_dataset:
     	if not isinstance(nd, Leaf):
-    		print(spacing + "  " + nd.split_option +": " + str(nd.split_question))
-    		# Json print
-    		key = nd.split_option +":" + str(nd.split_question)
-    		jd[key] = {}
-    	else:
-    		pass
+    		""" Node
+    		1. Declare the new category option dictionary and the split option dictionary
+    		2. The category option dictionary is value of the split option dictionary key
+    		2. The split option is the key of the main category and the value is the split option dictionary
+    		"""
 
-    	printTree(nd, jd, key, spacing + "  ")
+    		dict_category = {}
+    		dict_split_option = {}
+    		dict_split_option[str(nd.split_question)] = dict_category
+    		jd[nd.split_option] = dict_split_option
+
+    		printTree(nd, dict_category)
+    	else:
+    		# Reached the leaf: print the option (key) and the decision (value)
+    		jd[str(nd.option_decision[0])] = nd.option_decision[1]
+
+    return jd
 
 def jsonPrintTree(file_path, jd):
-	# Json out of the tree (print jd fo)
+	# Write to json file
 	json_string = json.dumps(jd, indent=2)
 	with open(file_path, 'w', encoding='utf-8') as json_file:
 		json.dump(json_string, json_file, ensure_ascii=False, indent=4)
 
 def drawJsonOutput(file_path):
+	# Read and draw from a json file
 	print("-------------------------------------- JSON FILE OUTPUT")
 	with open(file_path) as json_file:
 		json_data = json.load(json_file)
@@ -246,24 +242,19 @@ def drawJsonOutput(file_path):
 
 if __name__ == '__main__':
 
-	# csv file name
+	# csv and json file names
 	dataset_filepath = 'sports.csv'#
 	json_output_filepath = dataset_filepath.split('.')[0]+'output.json'
 
+	# Reads the dataset from csv file
 	categories, options, dataset = readData(dataset_filepath)
+
+	# Builds the optimal tree
 	my_tree = buildOptimalTree(dataset)
 
-	print("-------------------------------------- SCREEN PRINT")
-	# Print the starting node header then rest of the tree
-	jd = {}
-	print(my_tree.split_question)
+	# Json printing
+	python_dict = {} # Open main branch
+	python_dict[str(my_tree.split_question)] = printTree(my_tree)
 
-	key = str(my_tree.split_question)
-	jd[key] = {}
-
-	printTree(my_tree, jd[key])
-	jsonPrintTree(json_output_filepath, jd)
-	drawJsonOutput(json_output_filepath)
-
-
-
+	jsonPrintTree(json_output_filepath, python_dict) # output to json file
+	drawJsonOutput(json_output_filepath) # read from json file
