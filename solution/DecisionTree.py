@@ -1,6 +1,14 @@
 # Written by Learn Chiloane [date: 10/08/2021]
 import csv
 import json
+# GUI
+# from tkinter import *
+# import tkinter as tk
+
+# pip install pillow
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
 
 def readData(file_name):
 	""" Function that reads the dataset from a csv file (assumes the file is available)
@@ -55,7 +63,7 @@ def sliceDataset(dataset, category_col):
 	"""  Splits the dataset based on asked question (column header)
 
 		For the selected header, slice the data set with similar options
-		Returns a 3D list containing the sliced datasets
+		Returns a 3D list containing the sliced dataset and the order in which it was sliced
 	"""
 	category_count = classCount(dataset,category_col)
 
@@ -149,7 +157,7 @@ def optimalSlice(dataset):
 
 		# Store the column header/the question and plit the dataset
 		split_question = SplitDatasetQuestion(category_col) 
-		split_dataset, temp = sliceDataset(dataset, category_col)
+		split_dataset = sliceDataset(dataset, category_col)[0]
 
 		# Continue to the next question (column) after an unsuccessful split
 		if not split_dataset[0]:
@@ -167,11 +175,13 @@ def buildOptimalTree(dataset, question_node = None, split_option_=0):
 	""" Builds the optimal tree
 
 		Using the best question to ask at each node, it splits the dataset with it, and
-		continuously repeat this method until reaching the leaf (no further question to ask).
+		recursively repeat this method until reaching the leaf (no further question to ask).
 
 		Returns a Question Node with question used to split, the node name, and the child nodes.
 
-		*** NB: Giant stack traces for large datasets
+		*** NB: Giant stack traces
+		Solution 1: Increase recursion limit, issue: possible stack overflow for large datasets
+		Solution 2: Write an equivalent iterative method
 	"""
 
 	infor_gain, split_question = optimalSlice(dataset)
@@ -180,7 +190,6 @@ def buildOptimalTree(dataset, question_node = None, split_option_=0):
 		return Leaf(dataset, question_node)
 	else:
 		split_option = split_option_
-		# print("Question -", split_question)
 	
 	split_dataset, split_order = sliceDataset(dataset, split_question.column_num)
 
@@ -189,6 +198,7 @@ def buildOptimalTree(dataset, question_node = None, split_option_=0):
 		split_opt = list(split_order.keys())[split_data_idx]
 		split_data_branch[split_data_idx] = buildOptimalTree(split_dataset[split_data_idx], split_question, split_opt)
 
+		# return split_data_branch
 
 	return DecisionNode(split_question, split_data_branch, split_option)
 
@@ -205,16 +215,15 @@ def classCount(dataset, class_col):
 		return class_count
 
 def printTree(node, jd = {}):
-    """Tree printing function """
+    # Tree printing function
 
     for nd in node.split_dataset:
     	if not isinstance(nd, Leaf):
     		""" Node
     		1. Declare the new category option dictionary and the split option dictionary
     		2. The category option dictionary is value of the split option dictionary key
-    		2. The split option is the key of the main category and the value is the split option dictionary
+    		2. The split option is the key of the main category and its value is the split option dictionary
     		"""
-
     		dict_category = {}
     		dict_split_option = {}
     		dict_split_option[str(nd.split_question)] = dict_category
@@ -222,39 +231,53 @@ def printTree(node, jd = {}):
 
     		printTree(nd, dict_category)
     	else:
-    		# Reached the leaf: print the option (key) and the decision (value)
+    		# Leaf: print the option (key) and the decision (value)
     		jd[str(nd.option_decision[0])] = nd.option_decision[1]
 
     return jd
 
 def jsonPrintTree(file_path, jd):
-	# Write to json file
+	# Writes to json file
 	json_string = json.dumps(jd, indent=2)
-	with open(file_path, 'w', encoding='utf-8') as json_file:
-		json.dump(json_string, json_file, ensure_ascii=False, indent=4)
+	with open(file_path, 'w') as json_file:
+		json.dump(json_string, json_file)
 
 def drawJsonOutput(file_path):
-	# Read and draw from a json file
-	print("-------------------------------------- JSON FILE OUTPUT")
+	# Reads and draws results from a json file to an image file
+
+	# Terminal output
+	print("------------------ JSON FILE:", file_path.split('/')[-1], "\n")
 	with open(file_path) as json_file:
 		json_data = json.load(json_file)
-	print(json_data)
+		print(json_data)
+
+	"""Image output
+	 Set white background, use arial font {size=12, color=black},
+	 start at printing at position (5,5), and save image to "results/"" path"""
+	image_name = file_path.split('.')[0]+".png"
+	img = Image.new('RGB', (500, 800), color = (255, 255, 255))
+	font_type = ImageFont.truetype("files/arial.ttf", 12)
+	d = ImageDraw.Draw(img)
+	d.text((5,5), json_data, fill=(0, 0, 0), font = font_type)
+	img.save(image_name)
 
 if __name__ == '__main__':
 
-	# csv and json file names
-	dataset_filepath = 'sports.csv'#
-	json_output_filepath = dataset_filepath.split('.')[0]+'output.json'
+	## PART 1: OPTIMAL DECISION TREE
 
-	# Reads the dataset from csv file
+	# csv and json file path
+	datafile_name = 'example.csv' # change 
+	dataset_filepath = 'datafiles/'+datafile_name
+	json_output_filepath = 'results/'+datafile_name.split('.')[0]+'_decisontree_output.json'
+	# Reads the dataset from the csv file
 	categories, options, dataset = readData(dataset_filepath)
-
 	# Builds the optimal tree
 	my_tree = buildOptimalTree(dataset)
-
 	# Json printing
-	python_dict = {} # Open main branch
+	python_dict = {}
 	python_dict[str(my_tree.split_question)] = printTree(my_tree)
-
 	jsonPrintTree(json_output_filepath, python_dict) # output to json file
-	drawJsonOutput(json_output_filepath) # read from json file
+
+	## PART 2: OUTPUT JSON TEXT TO IMAGE FILE
+	drawJsonOutput(json_output_filepath) # read from json file and draw on screen
+
