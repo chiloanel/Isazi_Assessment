@@ -1,10 +1,6 @@
 # Written by Learn Chiloane [date: 10/08/2021]
 import csv
 import json
-# GUI
-# from tkinter import *
-# import tkinter as tk
-
 # pip install pillow
 from PIL import Image
 from PIL import ImageDraw

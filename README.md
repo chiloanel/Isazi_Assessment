@@ -1,76 +1,39 @@
-# Introduction
-(c) Isazi 2021
+# Isazi Assessment
 
-There are many domains in real life that require an optimal decision tree to be
-inferred over a dataset. This problem will explore an easier (and well understood)
-subset of this domain.
+This repository aims to be the main store of source code for the Isazi's Optimal Decision Tree Assessment. The solution is built using Python and its libraries.
 
-# Problem
+"An optimal tree means the tree with the fewest number of nodes that correctly classifies all the data"
 
-## Part 1
+The implemented solution uses gini impurity and information gain to ask the best question at each dataset/node, then split the dataset with the question, and recursively repeat this method until reaching a leaf (point where there are no further questions to ask). The resulting optimal tree is printed in a json and png - file.
 
-Given two example files (cars.csv, and sports.csv), you are required to write a
-program, in your programming language of choice, that will produce an output file
-(in JSON format) that will describe an optimal decision tree.
+The assessment is divided into two main parts:
 
-In other words, program an algorithm that calculates an optimal branching order of
-categories to reach a decision.
+- Part 1: Accepts a dataset and generates a decision tree (in json format).
+- Part 2: Uses the json file to draw its content to a png file.
 
-By convention the last column of the input file will always be the desired decision
-or outcome.
+# Running the program
 
-For example, given the following toy input:
-```
-Category 1,Category 2,Decision
-1A,2A,Y
-1A,2B,Y
-1B,2A,Y
-1B,2B,N
-```
+This section outlines how to run the program.
 
-The program could produce a JSON file as follows:
-```
-{
-    "Category 1": {
-        "1A": "Y",
-        "1B": {
-            "Category 2": {
-                "2A": "Y",
-                "2B": "N"
-            }
-        }
-    }
-}
-```
+## Libraries
 
-Note, another valid JSON file could also be:
-```
-{
-    "Category 2": {
-        "2A": "Y",
-        "2B": {
-            "Category 1": {
-                "1A": "Y",
-                "1B": "N"
-            }
-        }
-    }
-}
-```
+The pillow (PIL) library is used to draw the json content to an image file. This library can be installed via using "pip install pillow".
 
-An optimal tree means the tree with the fewest number of nodes that correctly
-classifies all the data. In the above example, either tree is optimal.
+The csv library used for reading from a csv file, and the json library used for writing/reading from a json file are built in in Python.
 
-## Part 2
+## Run the script
 
-Write a program that accepts your output file in the previous section and draws
-it either on the screen or to an image file (such as png).
+The solution is written in the "DecisionTree.py" script which can be found under the "solution/" directory. This script can be ran using the command-line/terminal "python DecisionTree.py"
 
-# Evaluation
+The algorithm uses the data stored in the "datafiles/"" directory. Each data filename must be inputted manually in the main function to generate the tree.
 
-1. Please ensure that you have placed your code in a Github repo and granted us access to view it.
-2. If your program makes use of libraries or other dependencies please ensure that detailed instructions
-   are provided along with your code on how to get the programs running. Ideally, you should use
-   your programming language's package manager to facilitate this process (e.g. for Python this is pipenv, for C# this is nuget, etc.)
-3. It is your choice what to implement vs. what to use a library for and either of these choices are considered equally valid
-4. Remember we are primarily evaluating your ability to solve a problem.
+The json and png files containing the tree are stored in the "results/"" directory.
+
+# Problems with the solution and possible improvements
+
+The implemented algorithm makes use recursive functions. There are possible giant stack traces for large datasets, "cars.cv" in the examples reaches python's maximum recursion depth, and its tree cannot be generated. This issue has not been fixed; below are the possible solutions I have thought of implementing.
+
+## Solution 1
+Increase the recursion limit using "sys.setrecursionlimit(limit)". This could cause stack overflow - not a good solution.
+## Solution 2
+Write an equivalent iterative method.
